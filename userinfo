@@ -1,0 +1,7 @@
+echo USER=$USER
+echo MAIL=$MAIL
+echo PWD=$PWD
+echo HOME=$HOME
+echo LOGNAME=$LOGNAME
+
+

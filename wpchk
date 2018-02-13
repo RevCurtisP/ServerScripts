@@ -1,0 +1,14 @@
+#!/bin/bash
+#Check WordPress Version
+
+#WordPress API - Get Current Version
+WPAPI=https://api.wordpress.org/core/version-check/1.7/
+
+#Filter to get Version from JSON
+JQFLT='.offers[0]["version"]'
+
+#Get the current Wordpress version
+WPVER=`wget -q -O - $WPAPI |jq -r $JQFLT`
+
+#And display it
+echo "Newest WordPress version is $WPVER"

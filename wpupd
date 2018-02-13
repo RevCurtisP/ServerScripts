@@ -1,0 +1,102 @@
+#!/bin/bash
+#Script to Update WordPress to Current Version
+#©2017 Ohio Divide Consulting
+
+#Assumes one or more WordPress installations in subdirectories of user's
+#home directories. WordPress base directories can have arbitrary names.
+
+#When run as root (or using sudo) downloads latest version of WordPress.
+#TODO: after download, run as each user to extract downloaded file
+
+#Otherwise, searches for all WordPress installations under the users home
+#directory and extracts the downloaded wordpress there.
+
+#This Script
+WPUPD=$0
+
+#Temporary Directory use for WordPress download and directory archives
+WPTEMP=/u/tmp
+
+#Fully Qualified URL of latest version of WordPress
+WPURL="https://wordpress.org/latest.tar.gz"
+
+#Name of file to `find` when searching for WordPress installations
+WPNAME="wp-config.php"
+
+#Current Date String for File Archive Suffix
+WPDATE=`date +%Y%m%d`
+#WordPress API URL and JQ Filter to Extract Version
+#WPAPI=https://api.wordpress.org/core/version-check/1.7/
+#WPJQF='.offers[0]["version"]'
+#Latest Available Version of WordPress
+#WPVER=`wget -q -O - $WPAPI |jq -r $WPJQF`
+
+#Filename to save the downloaded wordpress file as
+WPFILE=$WPTEMP/wordpress.tar.gz
+
+#Download Latest Version of WordPress to /u/tmp with name $WPFILE
+DownloadWP() {	echo "Downloading latest version of WordPress"
+	wget -O $WPFILE $WPURL
+	EXTSTS=$?
+	if [[ $EXTSTS != 0 ]]; then
+		echo "Download failed with Exit Status $EXTSTS"
+		exit $?
+	fi
+	echo "Download complete."
+}
+
+ #Check for (and possibly Download) latest version of WordPress
+CheckWP() {
+        echo "Checking current copy of WordPress"
+	if [[ -f $WPFILE ]]; then
+		WPFTIME=$(stat --format '%Y' $WPFILE)
+		CURTIME=$(date +%s)
+		if [[ $(($CURTIME-$WPFTIME)) < 86400 ]]; then
+			echo "Latest version of WordPress already downloaded"
+			return
+		fi
+	fi
+	DownloadWP
+}
+
+#Archive contents of $WPDIR
+ArchiveWP() {
+	TARDIR=`dirname $WPDIR`
+	TARBASE=`basename $WPDIR`
+        TARFILE=$WPTEMP/$USER-$TARBASE-$WPDATE.tar.gz
+	if [[ -e $TARFILE ]]; then
+		echo "Directory $WPDIR already archived"
+	else
+		echo "Archiving contents of directory $WPDIR"
+		tar cfpz $TARFILE -C $TARDIR $TARBASE
+	fi
+}
+
+#Extract contents of $WPFILE into $WPDIR
+ExtractWP() {
+	echo "Extracting WordPress into directory $WPDIR"
+	#Get WordPress Installation Directory Base Name
+	tar xfz $WPFILE --directory=$WPDIR --strip-components 1
+}
+
+#Update all WordPress installations under User's home directory
+UpdateWP() {
+	WPHOME=/home/$USER
+	echo "Checking for WordPress installations under $WPHOME"
+	for WPCFG in `find $WPHOME -name $WPNAME`; do
+		WPDIR=`dirname $WPCFG`
+		ArchiveWP
+		ExtractWP
+	done
+}
+
+if [[ "$USER" = "root" ]]; then
+	CheckWP
+	for WPUSER in `find /home -name $WPNAME -printf "%u\n" |uniq`;
+	do
+		echo 'sudo -u $WPUSER $WPUDP'
+	done
+else
+	UpdateWP
+fi
+
